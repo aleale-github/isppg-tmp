@@ -3,7 +3,7 @@ import sys
 sys.path.append("../")
 import numpy as np
 import pandas as pd
-import worst_off_autocallable as woa
+import isppg.payoffs.worst_off_autocallable as woa
 import scipy.io as spio
 
 def test_worst_off_autocallable():
@@ -21,6 +21,8 @@ def test_worst_off_autocallable():
     assert np.isclose(CouponFix, MatCouponFix).all()
 
     # Payoff Results
-    # results = pd.DataFrame({"Payoff Python": Payoff[:,-1], "Payoff Matlab": MatPayoff[:,-1]})
-    # print(results)
+    results = pd.DataFrame({"Payoff Python": Payoff[:,-1], "Payoff Matlab": MatPayoff[:,-1]})
+    print(results)
 
+if __name__ == "__main__":
+    test_worst_off_autocallable()
