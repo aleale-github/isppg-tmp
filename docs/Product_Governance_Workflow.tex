@@ -1,0 +1,158 @@
+%% HEADER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt,fleqn]{extarticle}
+
+\usepackage[Italian]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{geometry}
+\geometry{
+a4paper,
+total={210mm,297mm},
+left=20mm,
+right=20mm,
+top=20mm,
+bottom=20mm,
+}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{6ex}{1ex}
+\titlespacing*{\subsection}{0pt}{6ex}{1ex}
+\titlespacing*{\subsubsection}{0pt}{6ex}{1ex}
+\titlespacing*{\paragraph}{0pt}{6ex}{-1ex}
+\titlespacing*{\subparagraph}{0pt}{-1ex}{1ex}
+
+%% The simple version:
+\title{Product Governance Workflow}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% DOCUMENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\maketitle
+\tableofcontents
+\pagestyle{empty} %No headings for the first pages.
+\pagestyle{plain} %Now display headings: headings / fancy / ...
+
+\newpage
+\section{Contesto}
+I PRIIPs sono strumenti di investimento e di tipo assicurarivo preassemblati, i cui rendimenti, dovuti all'investitore al dettaglio, fluttuano in relazione all'esposizione a uno o piu' sottostanti, non acquistati in maniera diretta dall'investitore stesso.\newline
+Questi strumenti si possono suddividere in diverse categorie in relazione al tipo di contratto ed al grado di rischio ad esso associato. In base a tale categoria, la valutazione dei PRIIPs deve essere effettuata in maniera differente.\newline
+La regolamentazione inerente ai PRIIPs, impone, inoltre la redazione di documenti contenenti le informazioni chiave degli strumenti finanziari (KID), i quali devono contenere principalmente le informazioni riguardanti la valutazione del livello di rischio di mercato (Market Risk Measurement) e una stima dei livelli di performance dell'investimento condotto (Performance Scenario). \newline
+In questo contesto, analizzando il codice Matlab di riferimento abbiamo osservato che la Categoria 2 sembra non essere gestita in quanto, nella parte di codice apposita, i riferimenti ai calcoli sono commentati (da effettuare un analisi piu' approfondita con uno strumento di tipo 2), per questo motivo nelle sezioni successive tratteremo esclusivamente della procedura seguita per la valutazione dei PRIIPs Categoria 3.\newline
+Di seguito la lista dei passi da seguire per la valutazione rispettivamente del MRM e dei PS.\newline
+
+MRM:
+\begin{itemize}
+\item[1.] deve essere svolta una simulazione dei prezzi, che determinano il valore dei PRIIPs alla fine del periodo di detenzione raccomandato (RHP), utilizzando il metodo del Bootstrap;
+\item[2.] successivamente, i rendimenti devono essere corretti per assicurare che la misurazione del rendimento atteso dalla distribuzione (simulata al punto precedente) sia l'aspettazione priva di rischio dei rendimenti relativi alla data di detenzione raccomandata;
+\item[3.] una volta calcolati i prezzi simulati (in relazione ai diversi payoff) deve essere calcolato il VaR ad un determinato percentile, il quale deve essere scontato alla data corrente usando la curva dei fattori di sconto attesa, dalla data corrente alla data di detenzione raccomandata.
+\end{itemize}
+
+PS:
+\begin{itemize}
+\item[1.] deve essere svolta una simulazione dei prezzi, che determinano il valore dei PRIIPs alla fine del periodo di detenzione raccomandato (RHP), utilizzando il metodo del Bootstrap;
+\item[2.] stressare la volatilita' a 1Y e a RHP in modo da impattare le code della distribuzione;
+\item[3.] correggere i rendimenti senza considerare il fattore di sconto privo di rischio, in modo da operare in condizioni di mercato reali (valori che verranno utilizzati per il calcolo degli scenari di performance non stressati);
+\item[4.] correggere i rendimenti senza considerare il fattore di sconto privo di rischio, in modo da operare in condizioni di mercato reali, consideranto anche le volatilita' stressate in precedenza (tali valori verranno utilizzati per il calcolo delle performance nel caso di scenario stressato);
+\item[5.] calcolare le performance relative ad uno scenario sfavorevole, moderato, favorevole e stressato per le date relative ad 1Y, 3Y e RHP senza scontare la performance attesa con il fattore di sconto privo di rischio.
+\end{itemize}
+Di seguito verra' presentata la procedura nell'ordine seguito dal codice Matlab per svolgere i calcoli citati in precedenza.
+
+
+\section{Main (funzione PRIIPsModelFramework}
+Una volta sistemati i dati di input portando le date da formato Excel a Matlab, identificando le date di pagamento future e passate, e calcolato alcuni inidicatori statistici sui sottostanti, vengono calcolate le curve dei fattori di sconto da utilizzare in fase di valutazione.\newline
+A questo punto viengono svolti i seguenti bootstrap.\newline
+
+\subsection{Bootstrap con Drift Storico}
+La porcedura di Bootstrap in questo caso prevede che, per un numero di volte pari ai giorni che intercorrono tra la data attuale T0 e la data di detenzione raccomandata  (Recommended Holding Period):\newline
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\item[1.] venga generato un vettore di numeri random in cui la dimensione del vettore e' uguale al numero di simulazioni (di solito 10000);
+\item[2.] a partire dal vettore di numeri interi random generati, per ogni sottostante contenuto nel campione (numData x numAsset) vengono identificati i corrispettivi rendimenti;
+\item[3.] per ogni data di pagamento viene calcolata la cumulata (per riga) dei dati estrapolati in precedenza, creando un cubo di dimensioni 'numero di scenari x numero di sottostanti x numero di date di pagamento'.
+\end{itemize}
+La funzione relativa al bootstrap con drift storico restituisce 3 valori in output:
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\item[1.] Il valore della media dei rendimenti (se da considerare, a seconda della tipologia di simulazione);
+\item[2.] i valori contenuti nel cubo dei rendimenti, a cui viene rimossa la media storica, calcolando per ogni sottostante e per ogni slice del cubo (date di pagamento) la media dei valori per colonna, e sottraendoli ai rendimenti simulati ricavati con il bootstrap;
+\item[3.] Infine, i rendimenti ottenuti tramite la metodologia di bootstrap citata in precedenza, senza rimuovere la media storica.
+\end{itemize}
+
+\subsection{Bootstrap con Drift Storico e Volatilita' Stressata}
+In questo caso, la metodologia di bootrstrap utilizzata e' analoga a quella della sezione precedente, ma viene applicata ad un set di dati modificato per la volatilita', in quanto i risultati che verranno ottenuti saranno utilizzati per il calcolo degli scenari di performance nel caso appunto di stress, in cui le performance, oltre che per RHP devono esssere stimate anche per date intermedie ad 1Y e 3Y rispetto alla data di riferimento. Pertanto verrano eseguiti i passaggi indicati di seguito:
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\item[1.] in base alla data di RHP ed alla frequenza dei dati, si determinano il percentile e la finestra sulla quale calcolare la volatilita'. Una volta stabilita la finestra temporale, si calcola, rollando sui dati storici di ogni sottostante, la volatilita' riferita al periodo considerato (finestra stabilita in precedenza). Otteniamo cosi una matrice le cui colonne sono date dal numero di sottostanti e le righe dal numero di volatilita' calcolate;
+\item[2.] su questa matrice, poi, viene definito ( e aggiustato con delle correzioni) il percentile della distribuzione delle volatilita'. Otteniamo cosi un vettore di n elementi (in cui n e' dato dal numero di sottostanti considerati), costituito dalla volatilita' per ogni sottostante; 
+\item[3.] questa procedura viene poi ripetuta anche per lo scenario ad 1Y. Cambiera' dunque il percentile di riferimento.
+\item[4.] a questo punto viene ri-eseguita la procedura di bootstrap definita nella sezione precedente. In questo caso pero', i rendimenti, prima di essere bootstrappati, vengono riscalati per la volatilita' stressata (l'operazione viene ripetuta sia per i periodi RHP e 1Y).
+\end{itemize}
+Da questa funzione si ottengono:
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\item[1.] Il valore della media dei rendimenti (se da considerare, a seconda della tipologia di simulazione);
+\item[2.] un cubo di dimensioni 'numero di scenari x numero di sottostanti x numero di date di pagamento', in cui i valori sono stati ottenuti rimuovendo la media storica dal campione simulato con la metodologia del bootstrap (in maniera analoga alla sezione precedente).
+\end{itemize}
+
+\section{Risk Analysis}
+In questa sezione viene determinato il rischio di mercato, misurato come la volatilita' annualizzata corrispondente al VaR ad un livello di confidenza del 97.5\% (2.5\% percentile) sul periodo di detenzione raccomandato per lo strumento. Il VaR viene calcolato sulla distribuzione dei prezzi simulati dei PRIIPs rispetto alla data di fine periodo raccomandato, scontati alla data corrente utilizzando la curva dei tassi privi di rischio.\newline
+Il calcolo del market risk si basa su un assunzione di rischio neutrale, il che implica la rimozione del drift (mu = 0). I passaggi al fine di calcolare il MRM sono i seguenti:
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\item[1.] utilizzando la curva dei tassi privi di rischio, si calcolano i tassi spot tra la data di riferimento e le date di pagamento relative allo strumento considerato;
+\item[2.] i rendimenti simulati vengono corretti per garantire che il rendimento atteso ricavato dalla distribuzione dei rendimenti simulati sia l'aspettazione priva di rischio dei rendimenti sul periodo di detenzione raccomandato (Drift Correction). In particolare, la correzione avviene applicando la formula sottostante:
+\begin{equation}
+Return = E[Return_{risk-neutral}] - E[Return_{measured}] - 0.5\times \sigma^2 \times N - \rho \times \sigma \times \sigma_{ccy} \times N
+\end{equation}
+\item[3.] i rendimenti ottenuti al punto precedente vengono poi utilizzati, assieme al prezzo del sottostante al tempo T0 per calcolare i prezzi del sottostante ai vari periodi di pagamento, come segue:
+\begin{equation}
+Px_i = Px_0 \times \exp(Rend_i + MeanShiftCorr_i) - ParallelShift
+\end{equation}
+\item[4.] i valori ottenuti sono utilizzati poi nell'esecuzione del Payoff, da cui si ottengono i flussi di cassa per le date di pagamento future ed i coupon relativi alla componente fissa;
+\item[5.] tali flussi vengono scontati al tempo T0, ricavando un vettore di prezzi simulati (indice dato dal rapporto tra i prezzi al tempo t e quello a T0);
+\item[6.] con i risultati ottenuti si calcola il VaR della distribuzione al 97.5\% percentile con il quale vengono definiti gli indicatori di rischio.
+\end{itemize}
+
+\section{Performance Scenarios}
+In questa sezione viene presentata la metodologia seguita per determinare gli scenari di performance e dei costi, relativi a differenti periodi temporali. La parte di calcolo dei rendimenti simulati e di modellistica si differenziano da quella di rischio per il fatto che gli scenari non vengono corretti per la componente priva di rischio e per il fatto che, per le performance stressate, viene calcolata la volatilita' stressata in modo da modificare le code della distribuzione dei prezzi. Altra differenza rispetto alla sezione precedente, sta nel fatto che, una volta calcolati i prezzi a RHP tramite il payoff designato, vengono riscalate le curve dei tassi in modo da poter ricalcolare i prezzi simulati anche per date intermedie (1Y e 3Y). Di seguito i passi seguiti per la valutazione:
+\begin{itemize}
+\item[1.] partendo dai rendimenti ottenuti con il bootstrap con drift storico, senza rimuovere la media, si calcolano i prezzi come indicato nella formula (2);
+\item[2.] si ricavano successivamente i prezzi da utilizzare per la stima degli scenari di preformance stressate, quindi per scenari con scadenza superiore ad 1Y ed inferiore o uguale ad 1Y si esguono rispettivamente:
+\begin{itemize}
+\item[a.] il calcolo del premio per il rischio, utilizzando la vola stressata come indicato nel paragrafo riguardante il bootstrap con drift storico e volatilita' stressata, dato da:
+\begin{equation}
+RiskPremium =  0.5\times \sigma^2
+\end{equation}
+\item[b.] la correzione dei rendimenti con il drift, il quale consiste in questo caso nella cumulata del RiskPremium definito in precedenza moltiplicato per il numero di giorni che intercorrono tra le varie date di pagamento;
+\item[c.] il calcolo dei prezzi per gli scenari stressati, come alla formula (2).
+\end{itemize}
+\item[3.] ricavati i prezzi, si esegue la funzione relativa al payoff di riferimento, dalla quale si ottengono i CF dello strumento (numsim x paydate), il cubo dei prezzi simulati per le date intermedie (numsim x asset x dateint), coupon fissi (numsim x paydate) ed infine dei fattori di sconto (numsim x 1);
+\item[4.] vengono trovati i prezzi al tempo T0, scontando i CF, che poi vengono capitalizzati per definire la distribuzione dei prezzi in RHP;
+\item[5.] viene effettuato un riprezzamento per le date intermedie (1Y e 3Y);
+\item[6.] vengono stimati gli scenari di performance e dei costi;
+\item[7.] i punti dal 3 al 6 vengono ripetuti con i prezzi ricavati con la volatilita' stressata, in modo da ottenere gli scenari di stress.
+\end{itemize}
+
+
+%% <== End of hints
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% APPENDICES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+%% ==> Write your text here or include other files.
+
+%\input{FileName} %You need a file 'FileName.tex' for this.
+
+
+\end{document}
+
