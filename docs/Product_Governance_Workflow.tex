@@ -115,30 +115,55 @@ Return = E[Return_{risk-neutral}] - E[Return_{measured}] - 0.5\times \sigma^2 \t
 \begin{equation}
 Px_i = Px_0 \times \exp(Rend_i + MeanShiftCorr_i) - ParallelShift
 \end{equation}
-\item[4.] i valori ottenuti sono utilizzati poi nell'esecuzione del Payoff, da cui si ottengono i flussi di cassa per le date di pagamento future ed i coupon relativi alla componente fissa;
+\item[4.] il cubo (numero di scenari x numero di sottostanti x numero di date di pagamento) dei valori ottenuti sono utilizzati poi nell'esecuzione del Payoff, da cui si ottengono i flussi di cassa per le date di pagamento future ed i coupon relativi alla componente fissa;
 \item[5.] tali flussi vengono scontati al tempo T0, ricavando un vettore di prezzi simulati (indice dato dal rapporto tra i prezzi al tempo t e quello a T0);
 \item[6.] con i risultati ottenuti si calcola il VaR della distribuzione al 97.5\% percentile con il quale vengono definiti gli indicatori di rischio.
 \end{itemize}
 
 \section{Performance Scenarios}
-In questa sezione viene presentata la metodologia seguita per determinare gli scenari di performance e dei costi, relativi a differenti periodi temporali. La parte di calcolo dei rendimenti simulati e di modellistica si differenziano da quella di rischio per il fatto che gli scenari non vengono corretti per la componente priva di rischio e per il fatto che, per le performance stressate, viene calcolata la volatilita' stressata in modo da modificare le code della distribuzione dei prezzi. Altra differenza rispetto alla sezione precedente, sta nel fatto che, una volta calcolati i prezzi a RHP tramite il payoff designato, vengono riscalate le curve dei tassi in modo da poter ricalcolare i prezzi simulati anche per date intermedie (1Y e 3Y). Di seguito i passi seguiti per la valutazione:
+In questa sezione viene presentata la metodologia seguita per determinare gli scenari di performance e dei costi, relativi a differenti periodi temporali. Le parti relative al calcolo dei rendimenti simulati e alla definizione del modello si differenziano da quella di rischio per il fatto che gli scenari non vengono corretti per la componente priva di rischio e per il fatto che, per le performance degli scenari stressati, viene calcolata la volatilita' (stressata) in modo da modificare le code della distribuzione dei prezzi. Altra differenza rispetto alla sezione precedente, sta nel fatto che, una volta calcolati i prezzi a RHP tramite il payoff designato, vengono riscalate le curve dei tassi in modo da poter ricalcolare i prezzi simulati anche per date intermedie (1Y e 3Y). \newline
+Di seguito i passi seguiti per la valutazione:
 \begin{itemize}
-\item[1.] partendo dai rendimenti ottenuti con il bootstrap con drift storico, senza rimuovere la media, si calcolano i prezzi come indicato nella formula (2);
-\item[2.] si ricavano successivamente i prezzi da utilizzare per la stima degli scenari di preformance stressate, quindi per scenari con scadenza superiore ad 1Y ed inferiore o uguale ad 1Y si esguono rispettivamente:
+\item[1.] partendo dai rendimenti ai quali non e' stata rimossa la media storica, ottenuti tramite il bootstrap con drift storico, si calcolano i prezzi come indicato nella formula (2);
+\item[2.] successivamente, si ricavano anche i prezzi da utilizzare per la stima degli scenari di preformance stressate. Per scenari con scadenza superiore ad 1Y ed inferiore o uguale ad 1Y si eseguono, per ogni casistica, rispettivamente:
 \begin{itemize}
-\item[a.] il calcolo del premio per il rischio, utilizzando la vola stressata come indicato nel paragrafo riguardante il bootstrap con drift storico e volatilita' stressata, dato da:
+\item[a.] il calcolo del premio per il rischio, utilizzando la volatilita' stressata come indicato nel paragrafo riguardante il bootstrap con drift storico e volatilita' stressata, dato da:
 \begin{equation}
 RiskPremium =  0.5\times \sigma^2
 \end{equation}
-\item[b.] la correzione dei rendimenti con il drift, il quale consiste in questo caso nella cumulata del RiskPremium definito in precedenza moltiplicato per il numero di giorni che intercorrono tra le varie date di pagamento;
+\item[b.] la correzione dei rendimenti con il drift, il quale consiste in questo caso nella cumulata, in relazione alle date di pagamento, dei valori di RiskPremium (definiti nel punto precedente) moltiplicato per il numero di giorni che intercorrono tra le varie date di pagamento;
 \item[c.] il calcolo dei prezzi per gli scenari stressati, come alla formula (2).
 \end{itemize}
-\item[3.] ricavati i prezzi, si esegue la funzione relativa al payoff di riferimento, dalla quale si ottengono i CF dello strumento (numsim x paydate), il cubo dei prezzi simulati per le date intermedie (numsim x asset x dateint), coupon fissi (numsim x paydate) ed infine dei fattori di sconto (numsim x 1);
+\item[3.] ricavato il cubo (numero di scenari x numero di sottostanti x numero date di pagamento) dei prezzi, si esegue la funzione relativa al payoff di riferimento, dalla quale si ottengono i CF dello strumento (numero scenari x date di pagamento), il cubo dei prezzi simulati per le date intermedie (numero scenari x numero sottostanti x numero date intermedie), i coupon fissi (numero scenari x numero date di pagamento) ed infine i fattori di sconto (numero scenari ?????controllare non ne sono sicuro????? x 1);
 \item[4.] vengono trovati i prezzi al tempo T0, scontando i CF, che poi vengono capitalizzati per definire la distribuzione dei prezzi in RHP;
-\item[5.] viene effettuato un riprezzamento per le date intermedie (1Y e 3Y);
+\item[5.] viene effettuato un riprezzamento per le date intermedie (1Y e 3Y). Per ogni data:
+\begin{itemize}
+\item[a.] la curva dei fattori di sconto viene riscalata per il fattore di sconto alla data intermedia di riferimento, e viene utilizzata per scontare i flussi di cassa futuri;
+\item[b.] a seconda del tipo di strumento analizzato vengono definiti gli input necessari (ad esempio le date di autocallability) ed effettuato il pricing.
+\end{itemize}
 \item[6.] vengono stimati gli scenari di performance e dei costi;
 \item[7.] i punti dal 3 al 6 vengono ripetuti con i prezzi ricavati con la volatilita' stressata, in modo da ottenere gli scenari di stress.
 \end{itemize}
+
+\section{Output Management}
+Una volta ricavati tutti i risultati necessari alla stesura del KID, vengono create rispettivamente:
+\begin{itemize}
+\item[1.] la tabella relativa alla Risk Analysis, contenente gli indicatori di rischio calcolati una volta effettuato il VaR;  
+\item[2.] le due tabelle relative alle performance, per diversi scenari e per diverse date di riferimento, ed ai costi per lo strumento analizzato;
+\end{itemize}
+
+\section{Figure - Additional Statistics}
+Infine vengono prodotte delle figure contenete delle analisi statistiche relative ai dati utilizzati ed ai risultati ottenuti. Di seguito vengono riportate le figure prodotte:
+\begin{itemize}
+\item[1.] Serie Storiche;
+\item[2.] Distribuzione rendimenti storici logaritmici;
+\item[3.] Plot dei percentili relativi ai prezzi storici simulati;
+\item[4.] Volatilita' storica stressata;
+\item[5.] Plot dei percentili relativi ai prezzi ottenuti dal payoff;
+\item[6.] Confronto tra performance base e performance scenario stressato
+\end{itemize}
+
+
 
 
 %% <== End of hints
